@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout
+     xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:app="http://schemas.android.com/apk/res-auto"
+     xmlns:tools="http://schemas.android.com/tools"
+     android:layout_height="match_parent"
+     android:layout_width="match_parent"
+     android:background="@color/colorBackground"
+     tools:openDrawer="start"
+     android:fitsSystemWindows="true"
+     android:id="@+id/vidmate_main_drawer">
+
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+         android:layout_height="match_parent"
+         android:layout_width="match_parent">
+
+        <com.google.android.material.appbar.AppBarLayout
+             android:layout_height="wrap_content"
+             android:layout_width="match_parent"
+             android:background="@color/colorBackground"
+             app:liftOnScroll="true"
+             android:fitsSystemWindows="true"
+             app:elevation="0dp"
+             android:id="@+id/vidmate_app_bar">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                 android:layout_height="wrap_content"
+                 android:layout_width="match_parent"
+                 android:background="@color/colorBackground"
+                 app:layout_scrollFlags="scroll|enterAlways|snap"
+                 app:contentInsetStartWithNavigation="72dp"
+                 app:contentInsetStart="16dp"
+                 android:id="@+id/vidmate_toolbar">
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                     android:layout_height="match_parent"
+                     android:layout_width="match_parent"
+                     android:layout_marginEnd="16dp"
+                     android:layout_marginTop="5dp">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                         android:layout_height="55dp"
+                         android:layout_width="55dp"
+                         android:contentDescription="VidMate"
+                         android:scaleType="centerCrop"
+                         android:src="@drawable/app_icon"
+                         app:layout_constraintTop_toTopOf="parent"
+                         android:importantForAccessibility="no"
+                         app:layout_constraintStart_toStartOf="parent"
+                         app:shapeAppearanceOverlay="@style/CircularImageView"
+                         app:layout_constraintBottom_toBottomOf="parent"
+                         android:id="@+id/vidmate_app_logo" />
+
+                    <TextView
+                         android:layout_height="wrap_content"
+                         android:layout_width="0dp"
+                         android:layout_marginEnd="8dp"
+                         android:ellipsize="end"
+                         android:textSize="20sp"
+                         android:textColor="@color/colorOnBackground"
+                         app:layout_constraintEnd_toStartOf="@id/download_manager_btn"
+                         app:layout_constraintStart_toEndOf="@id/vidmate_app_logo"
+                         app:layout_constraintBottom_toBottomOf="parent"
+                         android:layout_marginStart="12dp"
+                         app:layout_constraintTop_toTopOf="parent"
+                         android:fontFamily="@font/poppins_semibold"
+                         android:maxLines="1"
+                         android:id="@+id/vidmate_title_text"
+                         android:text="@string/app_name" />
+
+                    <com.google.android.material.button.MaterialButton
+                         android:layout_height="55dp"
+                         android:layout_width="55dp"
+                         app:icon="@drawable/ic_download"
+                         app:iconSize="25dp"
+                         android:contentDescription="Download Manager"
+                         app:layout_constraintTop_toTopOf="parent"
+                         app:iconTint="@color/colorOnBackground"
+                         app:layout_constraintEnd_toStartOf="@id/search_videos_btn"
+                         style="@style/Widget.Material3.Button.IconButton"
+                         app:layout_constraintBottom_toBottomOf="parent"
+                         android:id="@+id/download_manager_btn" />
+
+                    <com.google.android.material.button.MaterialButton
+                         android:layout_height="55dp"
+                         android:layout_width="55dp"
+                         app:icon="@drawable/ic_search"
+                         app:iconSize="25dp"
+                         android:contentDescription="Search Videos"
+                         app:layout_constraintTop_toTopOf="parent"
+                         app:iconTint="@color/colorOnBackground"
+                         app:layout_constraintEnd_toStartOf="@id/more_options_btn"
+                         style="@style/Widget.Material3.Button.IconButton"
+                         app:layout_constraintBottom_toBottomOf="parent"
+                         android:id="@+id/search_videos_btn" />
+
+                    <com.google.android.material.button.MaterialButton
+                         android:layout_height="55dp"
+                         android:layout_width="55dp"
+                         app:icon="@drawable/ic_more_vert"
+                         android:contentDescription="More Options"
+                         app:iconSize="25dp"
+                         app:layout_constraintTop_toTopOf="parent"
+                         app:iconTint="@color/colorOnBackground"
+                         app:layout_constraintEnd_toEndOf="parent"
+                         style="@style/Widget.Material3.Button.IconButton"
+                         app:layout_constraintBottom_toBottomOf="parent"
+                         android:id="@+id/more_options_btn" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+            </com.google.android.material.appbar.MaterialToolbar>
+
+        </com.google.android.material.appbar.AppBarLayout>
+
+        <androidx.viewpager2.widget.ViewPager2
+             android:layout_height="match_parent"
+             android:layout_width="match_parent"
+             app:layout_behavior="@string/appbar_scrolling_view_behavior"
+             android:orientation="horizontal"
+             android:id="@+id/vidmate_content_pager" />
+
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+             android:layout_height="wrap_content"
+             android:layout_width="match_parent"
+             android:background="@color/colorBackground"
+             app:itemTextColor="@color/colorOnBackground"
+             app:labelVisibilityMode="labeled"
+             app:menu="@menu/main_bottom_navigation"
+             app:itemIconTint="@color/colorOnBackground"
+             app:elevation="8dp"
+             app:itemIconSize="24dp"
+             android:id="@+id/vidmate_bottom_nav"
+             android:layout_gravity="bottom" />
+
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+    <com.google.android.material.navigation.NavigationView
+         android:layout_height="match_parent"
+         android:layout_width="280dp"
+         android:background="@color/colorSurface"
+         app:itemTextColor="@color/colorPrimary"
+         app:menu="@menu/main_menu_drawer"
+         app:itemIconTint="@color/colorPrimary"
+         android:fitsSystemWindows="true"
+         app:elevation="16dp"
+         app:headerLayout="@layout/drawer_header"
+         android:id="@+id/vidmate_nav_drawer"
+         android:layout_gravity="start" />
+
+</androidx.drawerlayout.widget.DrawerLayout>

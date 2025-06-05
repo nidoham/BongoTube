@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BongoTube</string>
+
+    <!-- Navigation Header -->
+    <string name="nav_header_title">Ruposhi User</string>
+    <string name="nav_header_subtitle">user@ruposhi.com</string>
+    <string name="nav_header_desc">Navigation Header</string>
+
+</resources>

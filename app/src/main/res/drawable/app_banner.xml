@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <!-- ব্যাকগ্রাউন্ড কালার -->
+    <solid android:color="#FF4081" /> <!-- পিঙ্ক রঙ, আপনি পরিবর্তন করতে পারেন -->
+
+    <!-- কার্নার গুলো গোলাকার করার জন্য -->
+    <corners android:radius="12dp" />
+
+    <!-- বর্ডার (ঐচ্ছিক) -->
+    <stroke
+        android:width="3dp"
+        android:color="#D81B60" /> <!-- গাঢ় গোলাপি -->
+
+</shape>

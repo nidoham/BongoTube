@@ -1,0 +1,52 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'bd.nidoham.bongo'
+    compileSdk 34
+    
+    defaultConfig {
+        applicationId "bd.nidoham.bongo"
+        minSdk 26
+        targetSdk 33
+        versionCode 1
+        versionName "1.0"
+        
+        vectorDrawables { 
+            useSupportLibrary true
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        viewBinding true
+        buildConfig true
+    }
+}
+
+dependencies {
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.9.0")
+    
+    // Circular ImageView - Profile pictures এর জন্য
+    implementation 'de.hdodenhof:circleimageview:3.1.0'
+    
+    // androidx Leanback লাইব্রেরি — 
+    // Android TV এবং Leanback UI কম্পোনেন্ট ব্যবহারের জন্য প্রয়োজন।
+    // এটি TV অ্যাপ্লিকেশন বানানোর জন্য বিভিন্ন UI widget ও helpers দেয়,
+    // যেমন BrowseFragment, PlaybackOverlayFragment ইত্যাদি।
+    implementation 'androidx.leanback:leanback:1.2.0-alpha04'
+}
