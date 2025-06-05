@@ -1,0 +1,20 @@
+{
+  "allFiles": [
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/BongoTube/app/src/main/res/layout/activity_main.xml",
+      "selection": {
+        "end": {
+          "column": 44,
+          "index": 7631,
+          "line": 150
+        },
+        "start": {
+          "column": 44,
+          "index": 7631,
+          "line": 150
+        }
+      }
+    }
+  ],
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/BongoTube/app/src/main/res/layout/activity_main.xml"
+}
