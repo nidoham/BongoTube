@@ -1,6 +1,5 @@
 plugins {
     id 'com.android.application'
-    id 'io.gitlab.arturbosch.detekt' version '1.23.4'
 }
 
 android {
@@ -13,10 +12,6 @@ android {
         targetSdk 33
         versionCode 1
         versionName "1.0"
-        
-        vectorDrawables { 
-            useSupportLibrary true
-        }
         
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -59,8 +54,6 @@ android {
     lint {
         abortOnError false
         checkReleaseBuilds false
-        htmlReport true
-        xmlReport true
     }
 
     testOptions {
@@ -76,27 +69,15 @@ dependencies {
     // Circular ImageView - Profile pictures এর জন্য
     implementation 'de.hdodenhof:circleimageview:3.1.0'
     
-    // androidx Leanback লাইব্রেরি — 
-    // Android TV এবং Leanback UI কম্পোনেন্ট ব্যবহারের জন্য প্রয়োজন।
-    // এটি TV অ্যাপ্লিকেশন বানানোর জন্য বিভিন্ন UI widget ও helpers দেয়,
-    // যেমন BrowseFragment, PlaybackOverlayFragment ইত্যাদি।
+    // androidx Leanback library for Android TV applications
     implementation 'androidx.leanback:leanback:1.2.0-alpha04'
     
     // Testing dependencies
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.mockito:mockito-core:5.7.0'
     testImplementation 'androidx.test:core:1.5.0'
     testImplementation 'androidx.test.ext:junit:1.1.5'
-    testImplementation 'org.robolectric:robolectric:4.11.1'
     
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     androidTestImplementation 'androidx.test:runner:1.5.2'
-    androidTestImplementation 'androidx.test:rules:1.5.0'
-}
-
-detekt {
-    toolVersion = "1.23.4"
-    config.setFrom(file("$projectDir/config/detekt/detekt.yml"))
-    buildUponDefaultConfig = true
 }
