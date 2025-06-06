@@ -19,5 +19,7 @@
     <color name="colorStatusBar">#FFFFFF</color>
     <color name="colorNavigationBar">#FFFFFF</color>
     <color name="colorTopBar">#FFFFFF</color>
-    
+
+
+    <color name="defaultIconTint">#FFFFFF</color>
 </resources>

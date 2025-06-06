@@ -14,6 +14,8 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
     private MainPagerAdapter pagerAdapter;
+    
+    public static final boolean DEBUG = !BuildConfig.BUILD_TYPE.equals("release");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

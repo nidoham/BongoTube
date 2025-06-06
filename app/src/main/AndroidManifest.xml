@@ -42,6 +42,7 @@
 
     <!-- Application tag -->
     <application
+        android:name=".MyApplication"
         android:allowBackup="true"
         android:icon="@drawable/app_icon"
         android:roundIcon="@drawable/app_icon"
@@ -70,6 +71,10 @@
         <activity
             android:name=".MainActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".ReCaptchaActivity"
+            android:exported="false"/>
 
     </application>
 </manifest>
