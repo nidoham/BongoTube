@@ -1,10 +1,5 @@
-name: Android CI
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 
+<<<<<<< HEAD
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -52,3 +47,5 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Download APK" >> $GITHUB_STEP_SUMMARY
         echo "The debug APK can be downloaded from the Actions artifacts section above." >> $GITHUB_STEP_SUMMARY
+=======
+>>>>>>> e1e5f0c7e1ed9b3deae06aa1b17e54dda8097c9c

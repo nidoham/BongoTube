@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+     xmlns:android="http://schemas.android.com/apk/res/android"
+     android:layout_height="match_parent"
+     android:layout_width="match_parent"
+     android:gravity="center"
+     android:padding="24dp"
+     android:orientation="vertical"
+     android:id="@+id/layout_me">
+
+    <ImageView
+         android:layout_height="80dp"
+         android:layout_width="80dp"
+         android:layout_marginBottom="24dp"
+         android:src="@android:drawable/ic_menu_today"
+         android:tint="@color/colorPrimary" />
+
+    <TextView
+         android:layout_height="wrap_content"
+         android:layout_width="match_parent"
+         android:layout_marginBottom="8dp"
+         android:gravity="center"
+         android:textSize="24sp"
+         android:textColor="@color/colorSecondary"
+         android:text="New Features Coming Soon!"
+         android:textStyle="bold" />
+
+    <TextView
+         android:layout_height="wrap_content"
+         android:layout_width="match_parent"
+         android:layout_marginBottom="32dp"
+         android:gravity="center"
+         android:textSize="16sp"
+         android:textColor="@color/colorSecondary"
+         android:lineSpacingExtra="4dp"
+         android:paddingHorizontal="16dp"
+         android:text="We're working hard to bring you exciting updates. Stay tuned for amazing new features in our next release!" />
+
+    <TextView
+         android:layout_height="wrap_content"
+         android:layout_width="match_parent"
+         android:gravity="center"
+         android:textSize="14sp"
+         android:textColor="@color/colorPrimaryVariant"
+         android:text="Thank you for your patience!"
+         android:textStyle="italic" />
+
+</LinearLayout>
