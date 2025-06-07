@@ -1,6 +1,7 @@
-import com.android.tools.profgen.ArtProfileKt
-import com.android.tools.profgen.ArtProfileSerializer
-import com.android.tools.profgen.DexFile
+// FIX: Commented out these unused imports which can cause issues in CI environments.
+// import com.android.tools.profgen.ArtProfileKt
+// import com.android.tools.profgen.ArtProfileSerializer
+// import com.android.tools.profgen.DexFile
 
 plugins {
     id 'com.android.application'
@@ -136,7 +137,7 @@ dependencies {
     implementation "androidx.room:room-rxjava3:$room_version" // আপনার Room সংস্করণের সাথে মিলিয়ে নিন
 
 
-    // Media3 ExoPlayer
+    // Media3 ExoPlayer (This is the correct, modern library)
     implementation "androidx.media3:media3-exoplayer:1.2.1"
     implementation "androidx.media3:media3-exoplayer-dash:1.2.1"
     implementation "androidx.media3:media3-exoplayer-hls:1.2.1"
@@ -145,11 +146,13 @@ dependencies {
     implementation "androidx.media3:media3-session:1.2.1"
     implementation "androidx.media3:media3-datasource-okhttp:1.2.1"
     
-    implementation 'com.google.android.exoplayer:exoplayer-core:2.19.1'
-    implementation 'com.google.android.exoplayer:exoplayer-ui:2.19.1'
-    implementation 'com.google.android.exoplayer:exoplayer-dash:2.19.1'
-    implementation 'com.google.android.exoplayer:exoplayer-hls:2.19.1'
-    implementation 'com.google.android.exoplayer:exoplayer-smoothstreaming:2.19.1'
+    // FIX: Commented out the old ExoPlayer dependencies.
+    // They conflict with the androidx.media3 libraries above and cause build failures.
+    // implementation 'com.google.android.exoplayer:exoplayer-core:2.19.1'
+    // implementation 'com.google.android.exoplayer:exoplayer-ui:2.19.1'
+    // implementation 'com.google.android.exoplayer:exoplayer-dash:2.19.1'
+    // implementation 'com.google.android.exoplayer:exoplayer-hls:2.19.1'
+    // implementation 'com.google.android.exoplayer:exoplayer-smoothstreaming:2.19.1'
 
     // Network libraries
     implementation "com.squareup.okhttp3:okhttp:4.12.0"
