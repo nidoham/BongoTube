@@ -1,98 +1,49 @@
 # .github/workflows/android.yml
 
-# ----------------------------------------------------------------
-# Name of the workflow
-# ----------------------------------------------------------------
 name: Android CI Build
 
-# ----------------------------------------------------------------
-# Trigger: When this workflow will run
-# ----------------------------------------------------------------
 on:
-  # Run on pushes to the 'main' and 'develop' branches
   push:
     branches: [ "main", "develop" ]
-  
-  # Also run on pull requests targeting 'main' and 'develop'
-  # This is great for checking code *before* it gets merged
   pull_request:
     branches: [ "main", "develop" ]
 
-# ----------------------------------------------------------------
-# Jobs: The tasks to be executed
-# ----------------------------------------------------------------
 jobs:
   build-and-test:
-    # Use the latest version of Ubuntu as the runner environment
     runs-on: ubuntu-latest
 
     steps:
-      # -----------------
-      # Step 1: Check out the repository code
-      # -----------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # -----------------
-      # Step 2: Set up JDK 17
-      # -----------------
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
-          distribution: 'temurin' # A trusted, open-source distribution of OpenJDK
+          distribution: 'temurin'
 
-      # -----------------
-      # Step 3: Set up Gradle with caching
-      # This action is highly recommended for Android projects.
-      # It handles caching Gradle dependencies, wrappers, and build outputs
-      # to significantly speed up subsequent builds.
-      # -----------------
-      # Note: You mentioned Gradle 8.14, which is not yet released as of mid-2024.
-      # The latest stable version is around 8.8. I've used 8.8 here, please adjust if needed.
+      # Use the exact Gradle version from your project
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: '8.14' # <--- CHANGE THIS to your actual Gradle version if different
+          gradle-version: '8.14' 
 
-      # -----------------
-      # Step 4: Grant execute permission for gradlew
-      # This is necessary because the file permissions might not be preserved in git.
-      # -----------------
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # -----------------
-      # (IMPROVEMENT) Step 5: Run Android Lint
-      # This checks your code for potential bugs, style issues, and other problems.
-      # It's a great quality gate.
-      # -----------------
+      # Using --no-configuration-cache for better stability in CI environments
       - name: Run Android Lint
-        run: ./gradlew lintDebug
+        run: ./gradlew lintDebug --no-configuration-cache
 
-      # -----------------
-      # (IMPROVEMENT) Step 6: Run Unit Tests
-      # Ensure your local unit tests pass on every push.
-      # -----------------
       - name: Run Unit Tests
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testDebugUnitTest --no-configuration-cache
 
-      # -----------------
-      # Step 7: Build the debug APK
-      # This is the main build step that generates the APK file.
-      # -----------------
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
-      # -----------------
-      # Step 8: Upload the debug APK as a build artifact
-      # This makes the generated APK available for download from the workflow's summary page.
-      # -----------------
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          # Name of the artifact to be uploaded
           name: debug-apk
-          # Path to the file to upload.
-          # IMPORTANT: If your app module is not named 'app', change 'app/' to your module name.
+          # Path to the generated APK. Your module is 'app', so this is correct.
           path: app/build/outputs/apk/debug/app-debug.apk
