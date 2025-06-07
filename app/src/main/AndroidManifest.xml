@@ -76,5 +76,9 @@
             android:name=".ReCaptchaActivity"
             android:exported="false"/>
 
+        <activity
+            android:name=".OnboardActivity"
+            android:exported="false"/>
+
     </application>
 </manifest>

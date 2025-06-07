@@ -1,5 +1,7 @@
 package bd.nidoham.bongo.fragments.ui.home;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -15,7 +17,11 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import bd.nidoham.bongo.cache.UserSessionManager;
+import bd.nidoham.bongo.cache.PersonalizedFeedExtractor;
+import org.schabi.newpipe.extractor.ListExtractor;
 import org.schabi.newpipe.extractor.NewPipe;
+import org.schabi.newpipe.extractor.Page;
 import org.schabi.newpipe.extractor.StreamingService;
 import org.schabi.newpipe.extractor.exceptions.ExtractionException;
 import org.schabi.newpipe.extractor.kiosk.KioskExtractor;
@@ -25,6 +31,7 @@ import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import bd.nidoham.bongo.R;
 import bd.nidoham.bongo.list.adapter.YoutubeAdapter;
@@ -32,6 +39,13 @@ import bd.nidoham.bongo.list.adapter.YoutubeAdapter;
 public class YoutubeFragment extends Fragment implements YoutubeAdapter.OnItemClickListener {
 
     private static final String TAG = "YoutubeFragment";
+    
+    // SharedPreferences constants
+    private static final String PREFS_NAME = "BongoPreferences";
+    private static final String KEY_COUNTRY_CODE = "country_code";
+    private static final String DEFAULT_COUNTRY_CODE = "BD";
+
+    private static final int MIN_INITIAL_VIDEOS = 40;
 
     // UI Components
     private RecyclerView recyclerView;
@@ -41,34 +55,41 @@ public class YoutubeFragment extends Fragment implements YoutubeAdapter.OnItemCl
     private View errorView;
     private Button retryButton;
 
-    // Data loading thread
     private Thread loadingThread;
-
-    // Current country for trending videos
     private ContentCountry currentCountry;
+    private SharedPreferences sharedPreferences;
+    
+    // Pagination state (For Trending Feed)
+    private Page nextPage;
+    private boolean hasMorePages = true;
+    private AtomicBoolean isLoadingMore = new AtomicBoolean(false);
+    private List<StreamInfoItem> currentItems = new ArrayList<>();
+    private KioskExtractor currentExtractor;
+    
+    // User Session
+    private UserSessionManager sessionManager;
 
-    public YoutubeFragment() {
-        // Required empty public constructor
-    }
+    public YoutubeFragment() {}
 
     @Nullable
     @Override
-    public View onCreateView(
-            @NonNull final LayoutInflater inflater,
-            @Nullable final ViewGroup container,
-            @Nullable final Bundle savedInstanceState) {
-        
-        // Layout inflate করে root view তৈরি করা হচ্ছে
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         final View view = inflater.inflate(R.layout.fragment_home_youtube, container, false);
         
+        // Session Manager এবং অন্যান্য ভিউ ইনিশিয়ালাইজ করা
+        if (getContext() != null) {
+            sessionManager = new UserSessionManager(getContext());
+        }
+        
+        initializeSharedPreferences();
         initializeViews(view);
         setupRecyclerView();
         setupSwipeRefresh();
         setupRetryButton();
         initializeCountry();
         
-        // Load trending videos for current country
-        loadTrendingVideos();
+        // ব্যবহারকারীর লগইন স্ট্যাটাস অনুযায়ী ফিড লোড করা
+        loadInitialFeed();
         
         return view;
     }
@@ -80,7 +101,6 @@ public class YoutubeFragment extends Fragment implements YoutubeAdapter.OnItemCl
         errorView = view.findViewById(R.id.errorView);
         retryButton = view.findViewById(R.id.retryButton);
         
-        // Initialize adapter with context
         if (getContext() != null) {
             adapter = new YoutubeAdapter(getContext());
             adapter.setOnItemClickListener(this);
@@ -89,68 +109,228 @@ public class YoutubeFragment extends Fragment implements YoutubeAdapter.OnItemCl
 
     private void setupRecyclerView() {
         if (recyclerView != null && adapter != null) {
-            recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+            LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
+            recyclerView.setLayoutManager(layoutManager);
             recyclerView.setAdapter(adapter);
-            recyclerView.setHasFixedSize(true);
             
-            // Optional: Add item decoration for spacing
-            // recyclerView.addItemDecoration(new DividerItemDecoration(getContext(), DividerItemDecoration.VERTICAL));
+            recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+                @Override
+                public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                    super.onScrolled(recyclerView, dx, dy);
+                    // পার্সোনালাইজড ফিডের জন্য আপাতত কোনো পেজিনেশন নেই
+                    if (sessionManager.isLoggedIn()) return;
+                    
+                    if (dy > 0) {
+                        int visibleItemCount = layoutManager.getChildCount();
+                        int totalItemCount = layoutManager.getItemCount();
+                        int firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition();
+                        
+                        if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount - 10 && hasMorePages &&
+                            !isLoadingMore.get() && !swipeRefreshLayout.isRefreshing()) {
+                            loadMoreTrendingVideos();
+                        }
+                    }
+                }
+            });
         }
     }
 
+    // Main method to decide which feed to load
+    private void loadInitialFeed() {
+        if (sessionManager.isLoggedIn()) {
+            Log.d(TAG, "User is logged in. Loading personalized feed.");
+            swipeRefreshLayout.setRefreshing(true); // ম্যানুয়াল রিফ্রেশের জন্য
+            loadPersonalizedFeed();
+        } else {
+            Log.d(TAG, "User is not logged in. Loading public trending feed.");
+            loadPublicTrendingFeed();
+        }
+    }
+
+    // Method to load personalized feed for logged-in users
+    private void loadPersonalizedFeed() {
+        if (loadingThread != null && loadingThread.isAlive()) {
+            loadingThread.interrupt();
+        }
+        showLoading(true);
+
+        loadingThread = new Thread(() -> {
+            try {
+                String cookies = sessionManager.getSessionCookies();
+                if (cookies == null) {
+                    showError("Login session expired. Please login again.");
+                    return;
+                }
+
+                PersonalizedFeedExtractor extractor = new PersonalizedFeedExtractor(cookies);
+                List<StreamInfoItem> items = extractor.fetchInitialPage();
+                
+                // এখানে আর কোনো পেজিনেশন নেই, তাই hasMorePages = false
+                hasMorePages = false;
+
+                if (getActivity() != null && !isDetached() && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        if (items.isEmpty()) {
+                            showError("Could not load your personalized feed.");
+                        } else {
+                            currentItems.clear();
+                            currentItems.addAll(items);
+                            adapter.submitList(new ArrayList<>(currentItems));
+                            showContent();
+                            showToastOnUiThread("Showing your personalized feed");
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to load personalized feed", e);
+                showError("Failed to load your feed. Try logging out and in again.");
+            }
+        });
+        loadingThread.start();
+    }
+
+    // Method to load public trending videos (Old logic)
+    private void loadPublicTrendingFeed() {
+        if (loadingThread != null && loadingThread.isAlive()) {
+            loadingThread.interrupt();
+        }
+        showLoading(true);
+
+        loadingThread = new Thread(() -> {
+            try {
+                if (NewPipe.getDownloader() == null) {
+                    showError("Downloader not initialized!");
+                    return;
+                }
+                StreamingService service = NewPipe.getService(0);
+                currentExtractor = service.getKioskList().getExtractorById("Trending", null);
+                
+                if (currentCountry != null) {
+                    currentExtractor.forceContentCountry(currentCountry);
+                }
+
+                currentExtractor.fetchPage();
+                ListExtractor.InfoItemsPage<StreamInfoItem> currentPage = currentExtractor.getInitialPage();
+                List<StreamInfoItem> initialItems = new ArrayList<>(currentPage.getItems());
+                Page pageCursor = currentPage.getNextPage();
+
+                while (pageCursor != null && initialItems.size() < MIN_INITIAL_VIDEOS) {
+                    currentPage = currentExtractor.getPage(pageCursor);
+                    initialItems.addAll(currentPage.getItems());
+                    pageCursor = currentPage.getNextPage();
+                }
+                
+                nextPage = pageCursor;
+                hasMorePages = nextPage != null;
+
+                if (getActivity() != null && !isDetached() && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        currentItems.clear();
+                        currentItems.addAll(initialItems);
+                        adapter.submitList(new ArrayList<>(currentItems));
+                        showContent();
+                        showToastOnUiThread("Showing trending for " + (currentCountry != null ? currentCountry.getCountryCode() : "default"));
+                    });
+                }
+
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to load trending feed", e);
+                showError("Could not load trending videos.");
+            }
+        });
+        loadingThread.start();
+    }
+    
+    // Pagination for TRENDING videos ONLY
+    private void loadMoreTrendingVideos() {
+        if (!hasMorePages || nextPage == null || isLoadingMore.get()) return;
+
+        if (!isLoadingMore.compareAndSet(false, true)) return;
+        
+        showToastOnUiThread("Loading more...");
+        
+        new Thread(() -> {
+            try {
+                ListExtractor.InfoItemsPage<StreamInfoItem> nextItemsPage = currentExtractor.getPage(nextPage);
+                if (nextItemsPage != null && !nextItemsPage.getItems().isEmpty()) {
+                    List<StreamInfoItem> newItems = nextItemsPage.getItems();
+                    nextPage = nextItemsPage.getNextPage();
+                    hasMorePages = nextPage != null;
+                    
+                    if (getActivity() != null && !isDetached() && isAdded()) {
+                        getActivity().runOnUiThread(() -> {
+                            currentItems.addAll(newItems);
+                            adapter.submitList(new ArrayList<>(currentItems));
+                            isLoadingMore.set(false);
+                        });
+                    }
+                } else {
+                    hasMorePages = false;
+                    isLoadingMore.set(false);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error loading more videos", e);
+                hasMorePages = false;
+                isLoadingMore.set(false);
+            }
+        }).start();
+    }
+    
+    // --- Helper and Lifecycle Methods ---
+
     private void setupSwipeRefresh() {
         if (swipeRefreshLayout != null) {
-            swipeRefreshLayout.setOnRefreshListener(this::loadTrendingVideos);
-            swipeRefreshLayout.setColorSchemeResources(
-                R.color.colorPrimary,
-                R.color.colorPrimaryVariant
-            );
+            // refresh listener এখন loadInitialFeed কল করবে
+            swipeRefreshLayout.setOnRefreshListener(this::loadInitialFeed);
+            swipeRefreshLayout.setColorSchemeResources(R.color.colorPrimary, R.color.colorPrimaryVariant);
         }
+    }
+    
+    public void refreshTrendingVideos() {
+        Log.d(TAG, "Manually refreshing feed");
+        loadInitialFeed();
     }
 
     private void setupRetryButton() {
         if (retryButton != null) {
-            retryButton.setOnClickListener(v -> {
-                Log.d(TAG, "Retry button clicked - loading trending videos");
-                loadTrendingVideos();
+            retryButton.setOnClickListener(v -> loadInitialFeed());
+        }
+    }
+    
+    private void showToastOnUiThread(String message) {
+        if (getActivity() != null && !isDetached() && isAdded()) {
+            getActivity().runOnUiThread(() -> {
+                if(getContext() != null) Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
             });
+        }
+    }
+    
+    // Other methods like initializeSharedPreferences, initializeCountry, showLoading, showError, showContent, onItemClick etc.
+    // এই মেথডগুলো অপরিবর্তিত থাকবে, তাই আমি সেগুলো এখানে আর রিপিট করছি না।
+    // আপনার আগের কোড থেকে এগুলো কপি করে নিতে পারেন। নিচে প্রয়োজনীয় গুলো দিয়ে দিলাম।
+
+    private void initializeSharedPreferences() {
+        if (getContext() != null) {
+            sharedPreferences = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         }
     }
 
     private void initializeCountry() {
         try {
-            // Get current country from NewPipe preferences
-            currentCountry = NewPipe.getPreferredContentCountry();
-            if (currentCountry != null) {
-                Log.d(TAG, "Current country set to: " + currentCountry.getCountryCode());
-            } else {
-                Log.d(TAG, "No preferred country set, using default");
-            }
+            String savedCountryCode = sharedPreferences.getString(KEY_COUNTRY_CODE, DEFAULT_COUNTRY_CODE);
+            currentCountry = new ContentCountry(savedCountryCode);
         } catch (Exception e) {
-            Log.e(TAG, "Error getting preferred country", e);
-            currentCountry = null;
+            Log.e(TAG, "Error initializing country", e);
         }
     }
 
     private void showLoading(boolean show) {
         if (getActivity() != null && !isDetached() && isAdded()) {
             getActivity().runOnUiThread(() -> {
-                try {
-                    if (loadingView != null) {
-                        loadingView.setVisibility(show ? View.VISIBLE : View.GONE);
-                    }
-                    if (recyclerView != null) {
-                        recyclerView.setVisibility(show ? View.GONE : View.VISIBLE);
-                    }
-                    if (errorView != null) {
-                        errorView.setVisibility(View.GONE);
-                    }
-                    if (swipeRefreshLayout != null && !show) {
-                        swipeRefreshLayout.setRefreshing(false);
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Error updating loading state", e);
-                }
+                loadingView.setVisibility(show ? View.VISIBLE : View.GONE);
+                recyclerView.setVisibility(show ? View.GONE : View.VISIBLE);
+                errorView.setVisibility(View.GONE);
+                if (!show) swipeRefreshLayout.setRefreshing(false);
             });
         }
     }
@@ -158,23 +338,11 @@ public class YoutubeFragment extends Fragment implements YoutubeAdapter.OnItemCl
     private void showError(String message) {
         if (getActivity() != null && !isDetached() && isAdded()) {
             getActivity().runOnUiThread(() -> {
-                try {
-                    if (errorView != null) {
-                        errorView.setVisibility(View.VISIBLE);
-                    }
-                    if (loadingView != null) {
-                        loadingView.setVisibility(View.GONE);
-                    }
-                    if (recyclerView != null) {
-                        recyclerView.setVisibility(View.GONE);
-                    }
-                    if (swipeRefreshLayout != null) {
-                        swipeRefreshLayout.setRefreshing(false);
-                    }
-                    showToastOnUiThread(message);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error updating error state", e);
-                }
+                errorView.setVisibility(View.VISIBLE);
+                loadingView.setVisibility(View.GONE);
+                recyclerView.setVisibility(View.GONE);
+                swipeRefreshLayout.setRefreshing(false);
+                showToastOnUiThread(message);
             });
         }
     }
@@ -182,217 +350,24 @@ public class YoutubeFragment extends Fragment implements YoutubeAdapter.OnItemCl
     private void showContent() {
         if (getActivity() != null && !isDetached() && isAdded()) {
             getActivity().runOnUiThread(() -> {
-                try {
-                    if (recyclerView != null) {
-                        recyclerView.setVisibility(View.VISIBLE);
-                    }
-                    if (loadingView != null) {
-                        loadingView.setVisibility(View.GONE);
-                    }
-                    if (errorView != null) {
-                        errorView.setVisibility(View.GONE);
-                    }
-                    if (swipeRefreshLayout != null) {
-                        swipeRefreshLayout.setRefreshing(false);
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Error updating content state", e);
-                }
-            });
-        }
-    }
-
-    private void loadTrendingVideos() {
-        // Cancel previous loading thread if running
-        if (loadingThread != null && loadingThread.isAlive()) {
-            loadingThread.interrupt();
-        }
-
-        showLoading(true);
-        
-        final int youtubeServiceId = 0;
-        final String trendingKioskId = "Trending";
-
-        loadingThread = new Thread(() -> {
-            try {
-                // Check if thread was interrupted
-                if (Thread.currentThread().isInterrupted()) {
-                    return;
-                }
-
-                // Check if NewPipe Downloader is initialized
-                if (NewPipe.getDownloader() == null) {
-                    Log.e(TAG, "NewPipe Downloader is not initialized!");
-                    showError("NewPipe Downloader is not initialized!");
-                    return;
-                }
-
-                // Get YouTube service
-                StreamingService service = NewPipe.getService(youtubeServiceId);
-                if (service == null || service.getKioskList() == null) {
-                    Log.e(TAG, "YouTube service or KioskList not available.");
-                    showError("YouTube service not available");
-                    return;
-                }
-
-                List<StreamInfoItem> trendingItems = new ArrayList<>();
-                
-                // Get current country for trending videos
-                String countryCode = currentCountry != null ? currentCountry.getCountryCode() : "US";
-                Log.d(TAG, "Loading trending videos for country: " + countryCode);
-                
-                // Get trending videos extractor for current country
-                KioskExtractor extractor = service.getKioskList().getExtractorById(trendingKioskId, null);
-                if (extractor != null) {
-                    // Check if thread was interrupted before network call
-                    if (Thread.currentThread().isInterrupted()) {
-                        return;
-                    }
-
-                    // Set content country if available
-                    if (currentCountry != null) {
-                        extractor.forceContentCountry(currentCountry);
-                    }
-
-                    extractor.fetchPage();
-                    List<StreamInfoItem> items = extractor.getInitialPage().getItems();
-                    
-                    if (items != null && !items.isEmpty()) {
-                        trendingItems.addAll(items);
-                        Log.d(TAG, "Successfully fetched " + items.size() + " trending videos for " + countryCode);
-                    } else {
-                        Log.w(TAG, "No trending videos found for country: " + countryCode);
-                    }
-                } else {
-                    Log.e(TAG, "Could not get KioskExtractor for trending videos");
-                    showError("Could not access trending videos");
-                    return;
-                }
-
-                // Check if thread was interrupted before UI update
-                if (Thread.currentThread().isInterrupted()) {
-                    return;
-                }
-
-                // Update UI on the main thread
-                final List<StreamInfoItem> finalItems = new ArrayList<>(trendingItems);
-                if (getActivity() != null && !isDetached() && isAdded()) {
-                    getActivity().runOnUiThread(() -> {
-                        try {
-                            if (adapter == null) {
-                                Log.e(TAG, "Adapter is null when trying to update content");
-                                return;
-                            }
-                            
-                            if (finalItems.isEmpty()) {
-                                showError("No trending videos found for your country");
-                            } else {
-                                adapter.submitList(finalItems);
-                                showContent();
-                                Log.d(TAG, "Updated adapter with " + finalItems.size() + " trending videos");
-                                
-                                // Show success message
-                                String countryName = currentCountry != null ? currentCountry.getCountryCode() : "Default";
-                                showToastOnUiThread("Loaded trending videos for " + countryName);
-                            }
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error updating UI with trending video data", e);
-                            showError("Error displaying trending videos");
-                        }
-                    });
-                }
-
-            } catch (IOException e) {
-                Log.e(TAG, "Network error loading trending videos", e);
-                showError("Network error: Check your internet connection");
-            } catch (ExtractionException e) {
-                Log.e(TAG, "Extraction error loading trending videos", e);
-                showError("Error loading trending videos from YouTube");
-            } catch (Exception e) {
-                Log.e(TAG, "Unexpected error occurred while loading trending videos", e);
-                showError("An unexpected error occurred");
-            }
-        });
-        
-        loadingThread.start();
-    }
-
-    private void showToastOnUiThread(String message) {
-        if (getActivity() != null && !isDetached() && isAdded()) {
-            getActivity().runOnUiThread(() -> {
-                try {
-                    if (getContext() != null) {
-                        Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Error showing toast", e);
-                }
+                recyclerView.setVisibility(View.VISIBLE);
+                loadingView.setVisibility(View.GONE);
+                errorView.setVisibility(View.GONE);
+                swipeRefreshLayout.setRefreshing(false);
             });
         }
     }
 
     @Override
     public void onItemClick(StreamInfoItem item, int position) {
-        // Handle trending video item click
-        Log.d(TAG, "Trending video clicked: " + item.getName() + " at position: " + position);
-        
-        // Show video info
-        if (getContext() != null) {
-            String message = "Playing trending video: " + item.getName();
-            Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
-        }
-        
-        // TODO: Implement actual video playback logic
-        // For example:
-        // Intent intent = new Intent(getActivity(), VideoPlayerActivity.class);
-        // intent.putExtra("video_url", item.getUrl());
-        // intent.putExtra("video_title", item.getName());
-        // intent.putExtra("video_type", "trending");
-        // intent.putExtra("country_code", currentCountry != null ? currentCountry.getCountryCode() : "default");
-        // startActivity(intent);
+        if(getContext() != null) Toast.makeText(getContext(), "Playing: " + item.getName(), Toast.LENGTH_SHORT).show();
     }
-
-    public void refreshTrendingVideos() {
-        Log.d(TAG, "Manually refreshing trending videos");
-        loadTrendingVideos();
-    }
-
-    public String getCurrentCountryCode() {
-        return currentCountry != null ? currentCountry.getCountryCode() : "Default";
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        // Stop loading when fragment is paused
-        if (loadingThread != null && loadingThread.isAlive()) {
-            loadingThread.interrupt();
-        }
-    }
-
+    
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        
-        // Cancel any running threads
         if (loadingThread != null && loadingThread.isAlive()) {
             loadingThread.interrupt();
         }
-        
-        // Clean up references to prevent memory leaks
-        if (adapter != null) {
-            adapter.setOnItemClickListener(null);
-            adapter = null;
-        }
-        
-        recyclerView = null;
-        swipeRefreshLayout = null;
-        loadingView = null;
-        errorView = null;
-        retryButton = null;
-        loadingThread = null;
-        currentCountry = null;
-        
-        Log.d(TAG, "YoutubeFragment view destroyed and cleaned up");
     }
 }

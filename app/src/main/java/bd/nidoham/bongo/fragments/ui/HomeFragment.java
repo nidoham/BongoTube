@@ -41,6 +41,9 @@ public class HomeFragment extends Fragment {
         // ✅ Set up ViewPager2 with MainPagerAdapter
         adapter = new HomePagerAdapter(requireActivity());
         binding.vidmateContentPager.setAdapter(adapter);
+        
+        // Disable swipe gesture
+        binding.vidmateContentPager.setUserInputEnabled(false);
 
         // ✅ Attach TabLayout with ViewPager2
         new TabLayoutMediator(

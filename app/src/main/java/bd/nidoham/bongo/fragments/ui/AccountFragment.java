@@ -1,5 +1,6 @@
 package bd.nidoham.bongo.ui.fragments.ui;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import bd.nidoham.bongo.OnboardActivity;
 import bd.nidoham.bongo.R;
 
 public class AccountFragment extends Fragment {
@@ -25,6 +27,8 @@ public class AccountFragment extends Fragment {
             @Nullable final Bundle savedInstanceState) {
         // Layout inflate করে root view তৈরি করা হচ্ছে
         final View view = inflater.inflate(R.layout.fragment_me, container, false);
+        
+        startActivity(new Intent(getContext(), OnboardActivity.class));
 
         return view;
     }
